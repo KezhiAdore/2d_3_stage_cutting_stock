@@ -137,8 +137,8 @@ class PatternGenerator:
     def generate_segments(self):
         
         segments=[]
-        with Pool(processes=4) as pool:
-            results=pool.map(self.generate_segment_x,[0,38])
+        with Pool(processes=8) as pool:
+            results=pool.map(self.generate_segment_x,[x for x in self._strips])
         
         for i,r in enumerate(results):
             if not r.empty:
