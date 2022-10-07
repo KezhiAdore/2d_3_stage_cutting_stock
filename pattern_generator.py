@@ -8,7 +8,8 @@ from matplotlib import pyplot as plt
 from multiprocessing import Pool
 
 from settings import dataA_paths, dataB_paths, segments_path, segment_figures_dir
-from utils import Strip, Segment, dill_load, dill_save
+from utils import Strip, Segment, Pattern,dill_load, dill_save
+from cg import CuttingStock
 import settings
 
 for name, value in settings.__dict__.items():
@@ -25,6 +26,9 @@ class PatternGenerator:
         self._item_shape = []
         self._item_require_num = {}
         self._item_product_num = {}
+        self._item_require_df = pd.DataFrame(
+            columns=["item_id", "require_num", "item_length", "item_width"]
+        )
         self.init_item()
 
         self._L = L   # 原料版长度
@@ -36,6 +40,8 @@ class PatternGenerator:
 
         self._segments = []
         self.repeat_generate_segments()
+        
+        self._patterns=[]
 
     def init_item(self):
         for _, row in self._origin_df.iterrows():
@@ -54,6 +60,17 @@ class PatternGenerator:
 
         # item去重
         self._item_shape = list(set(self._item_shape))
+
+        item_id = 0
+        for item_length in self._item_require_num.keys():
+            for item_width in self._item_require_num[item_length].keys():
+                row = {
+                    "item_id": item_id,
+                    "require_num": self._item_require_num[item_length][item_width],
+                    "item_length": item_length,
+                    "item_width": item_width,
+                }
+                self._item_require_df=self._item_require_df.append(row,ignore_index=True)
 
     def item_require_num(self, length, width):
         if length in self._item_require_num.keys():
@@ -228,7 +245,7 @@ class PatternGenerator:
 
         return best_segment
 
-    def export_segment_figures(self):
+    def export_segment_figures(self,dir_path):
         for i, segment in enumerate(self._segments):
             plt.clf()
             plt.cla()
@@ -236,7 +253,7 @@ class PatternGenerator:
             segment.plot(ax)
             plt.plot()
             figure_path = os.path.join(
-                segment_figures_dir, "{}_{}.png".format(i, segment.x))
+                dir_path, "segment_{}_{}.png".format(i, segment.x))
             plt.savefig(figure_path)
 
     def segments_item_amount(self, item_length, item_width):
@@ -279,8 +296,75 @@ class PatternGenerator:
             for strip in seg.strips:
                 self.reduce_item_require(strip.l, strip.w, strip.e)
 
-    def generate_pattern(self):
-        pass
+    @property
+    def item_require_list(self):
+        return list(self._item_require_df["require_num"])
+    
+    @property
+    def segments_length(self):
+        return [seg.x for seg in self._segments]
+    
+    @property
+    def segments_items_matrix(self):
+        """generate matrix m,m[i][j] means the number of item i in segment j
+
+        Returns:
+            2d array: m
+        """
+        m=[]
+        for _,row in self._item_require_df.iterrows:
+            item_n=[]
+            item_length=row["item_length"]
+            item_width=row["item_width"]
+            for seg in self._segments:
+                if item_length==item_width:
+                    n=seg.item_amount(item_length,item_width)
+                else:
+                    n=seg.item_amount(item_length,item_width)+seg.item_amount(item_width,item_length)
+                item_n.append(n)
+        m.append(item_n)
+        return m
+
+    def generate_patterns(self):
+        aij = pd.read_csv('data/segments_item_matrix.csv', index_col=0)
+        lengths = pd.read_csv('data/segments_length_list.csv')
+        demand = pd.read_csv('data/item_require_list.csv')
+
+        # print(list(demand['0']))
+        # print(list(lengths['0']))
+        # print(aij.values)
+        # # exit(0)
+
+        demand = list(demand['0'])
+        lengths = list(lengths['0'])
+        aij = aij.values
+        mycsp = CuttingStock(
+            self._L,
+            self.item_require_list,
+            self.segments_length,
+            self.segments_items_matrix,
+        )
+
+        mycsp.solve()
+        
+        print(mycsp.patterns)
+        print(mycsp.solution)
+        # print(mycsp.min_rolls)
+        sum(mycsp.solution.values())
+    
+    def export_pattern_figure(self,dir_path):
+        for i, pattern in enumerate(self._patterns):
+            plt.clf()
+            plt.cla()
+            fig, ax = plt.subplots()
+            pattern.plot(ax)
+            plt.plot()
+            
+            figure_path = os.path.join(
+                dir_path, "pattern_{}.png".format(i))
+            print("exporting figure {}".format(figure_path))
+            
+            plt.savefig(figure_path)
 
 
 if __name__ == "__main__":
@@ -289,9 +373,8 @@ if __name__ == "__main__":
     print(len(pg._item_require_num))
     print(len(pg._item_shape))
     print(len(pg._q))
-    pg.check_segment_coverage()
-    pg.export_segment_figures()
-    pg.generate_segment_x(2440)
+    # pg.export_segment_figures()
+    pg.generate_patterns()
 
     # print(pg.df.sort_values(by=["item_length","item_width"]))
     # print(pg.df.describe())
