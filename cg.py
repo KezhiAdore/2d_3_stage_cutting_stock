@@ -113,7 +113,7 @@ class CuttingStock:
         # for idx, length in self.lengths.items():
         for i in range(len(self.lengths)):
             pattern = [0 for _ in range(self.J)]
-            pattern[i] = self.plate_length // self.lengths[self.J-i-1]
+            pattern[i] = 1
             patterns.append(pattern)
         self.patterns = patterns
         print('finish init patterns')

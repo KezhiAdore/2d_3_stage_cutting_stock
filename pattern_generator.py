@@ -254,6 +254,7 @@ class PatternGenerator:
 
     def export_segment_figures(self,dir_path):
         os.system("rm -rf {}".format(dir_path))
+        os.makedirs(dir_path)
         for i, segment in enumerate(self._segments):
             plt.clf()
             plt.cla()
@@ -360,6 +361,7 @@ class PatternGenerator:
     
     def export_pattern_figure(self,dir_path):
         os.system("rm -rf {}".format(dir_path))
+        os.makedirs(dir_path)
         for i, pattern in enumerate(self._patterns):
             plt.clf()
             plt.cla()
