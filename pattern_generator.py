@@ -25,7 +25,6 @@ class PatternGenerator:
         self._origin_df = df
         self._item_shape = []   # shape of all items, including rotation
         self._item_require_num = {} # the requirement of each item, excluding rotation
-        self._item_product_num = {}
         # table of items requirements, including id, require number, length and width
         self._item_require_df = pd.DataFrame(
             columns=["item_id", "require_num", "item_length", "item_width"]
@@ -46,6 +45,12 @@ class PatternGenerator:
         self._pattern_number=0
 
     def init_item(self):
+        self._item_shape = []
+        self._item_require_num = {}
+        self._item_require_df = pd.DataFrame(
+            columns=["item_id", "require_num", "item_length", "item_width"]
+        )
+        
         for _, row in self._origin_df.iterrows():
             item_length = row["item_length"]
             item_width = row["item_width"]
@@ -107,23 +112,6 @@ class PatternGenerator:
                     raise ValueError(
                         self._item_require_num[width][length], "should larger than 0")
 
-        raise ValueError(
-            "can not find length={},width={} in item list".format(length, width))
-
-    def item_product_num(self, length, width):
-        if length in self._item_require_num.keys() and width in self._item_require_num[length].keys():
-            if length not in self._item_product_num.keys():
-                self._item_product_num[length] = {}
-                if width not in self._item_product_num[length].keys():
-                    self._item_product_num[length][width] = 0
-            return self._item_product_num[length][width]
-
-        if width in self._item_require_num.keys() and length in self._item_require_num[width].keys():
-            if width not in self._item_product_num.keys():
-                self._item_product_num[width] = {}
-                if length not in self._item_product_num[width].keys():
-                    self._item_product_num[width][length] = 0
-            return self._item_product_num[width][length]
         raise ValueError(
             "can not find length={},width={} in item list".format(length, width))
 
@@ -299,7 +287,7 @@ class PatternGenerator:
                 # print("item whose length is {} and width is {} is not covered".format(item_length,item_width))
                 return False
         return True
-
+    
     def reduce_require_item_from_segments(self):
         for seg in self._segments:
             for strip in seg.strips:
@@ -376,7 +364,7 @@ class PatternGenerator:
     def total_require_area(self):
         total_area=0
         for _,row in self._item_require_df.iterrows():
-            total_area+=row["item_length"]*row["item_width"]
+            total_area+=row["item_length"]*row["item_width"]*row["require_num"]
         return total_area
     
     @property
