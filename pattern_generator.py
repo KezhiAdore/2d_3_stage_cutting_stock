@@ -23,9 +23,10 @@ class PatternGenerator:
 
     def __init__(self, df: pd.DataFrame, L, W) -> None:
         self._origin_df = df
-        self._item_shape = []
-        self._item_require_num = {}
+        self._item_shape = []   # shape of all items, including rotation
+        self._item_require_num = {} # the requirement of each item, excluding rotation
         self._item_product_num = {}
+        # table of items requirements, including id, require number, length and width
         self._item_require_df = pd.DataFrame(
             columns=["item_id", "require_num", "item_length", "item_width"]
         )
@@ -60,7 +61,8 @@ class PatternGenerator:
 
         # item去重
         self._item_shape = list(set(self._item_shape))
-
+        
+        # init item require dataframe
         item_id = 0
         for item_length in self._item_require_num.keys():
             for item_width in self._item_require_num[item_length].keys():
@@ -156,6 +158,8 @@ class PatternGenerator:
             self._segments = dill_load(segments_path)
         while not self.check_segments_coverage():
             self.reduce_require_item_from_segments()
+            self._q=self.q_set()
+            self._strips=self.generate_strips()
             self._segments.extend(self.generate_segments())
         dill_save(self._segments, segments_path)
         return self._segments
@@ -252,8 +256,8 @@ class PatternGenerator:
             fig, ax = plt.subplots()
             segment.plot(ax)
             plt.plot()
-            figure_path = os.path.join(
-                dir_path, "segment_{}_{}.png".format(i, segment.x))
+            figure_path = os.path.join(dir_path, "segment_{}_{}.png".format(i, segment.x))
+            print("exporting segment figure {}".format(figure_path))
             plt.savefig(figure_path)
 
     def segments_item_amount(self, item_length, item_width):
@@ -359,11 +363,8 @@ class PatternGenerator:
             fig, ax = plt.subplots()
             pattern.plot(ax)
             plt.plot()
-            
-            figure_path = os.path.join(
-                dir_path, "pattern_{}.png".format(i))
-            print("exporting figure {}".format(figure_path))
-            
+            figure_path = os.path.join(dir_path, "pattern_{}.png".format(i))
+            print("exporting pattern figure {}".format(figure_path))
             plt.savefig(figure_path)
 
 
