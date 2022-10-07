@@ -32,7 +32,6 @@ class Strip:
                 fill=False
             )
             ax.add_patch(rect)
-            print
         plt.plot()
 
     @property
@@ -113,20 +112,42 @@ class Segment:
 
 
 class Pattern:
-    def __init__(self, segments) -> None:
+    def __init__(self, segments, use_num, L, W) -> None:
         self._segments = segments
+        self._use_num=use_num
+        self._L = L
+        self._W = W
 
     def __str__(self) -> str:
         s = ""
         for segment in self._segments:
             s += segment+"\n"
         return s
+    
+    def append(self, segment):
+        self._segments.append(segment)
 
     def plot(self, ax):
+        rect = patches.Rectangle(
+                (0, 0),
+                width=self._L,
+                height=self._W,
+                fill=False,
+                edgecolor=(0,1,0)
+            )
+        ax.add_patch(rect)
         left = 0
         for segment in self._segments:
             segment.plot(ax, left)
             left += segment.x
+    
+    @property
+    def use_num(self):
+        return self._use_num
+    
+    @property
+    def length(self):
+        return sum([seg.x for seg in self._segments])
 
 
 def dill_load(path):

@@ -16,3 +16,4 @@ segments_path = os.path.join(results_dir, "segments.pkl")
 
 figures_dir = os.path.join(results_dir, "figures")
 segment_figures_dir = os.path.join(figures_dir, "segments")
+pattern_figures_dir = os.path.join(figures_dir, "patterns")

@@ -7,7 +7,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from multiprocessing import Pool
 
-from settings import dataA_paths, dataB_paths, segments_path, segment_figures_dir
+from settings import dataA_paths, dataB_paths, segments_path, segment_figures_dir,pattern_figures_dir
 from utils import Strip, Segment, Pattern,dill_load, dill_save
 from cg import CuttingStock
 import settings
@@ -43,6 +43,7 @@ class PatternGenerator:
         self.repeat_generate_segments()
         
         self._patterns=[]
+        self._pattern_number=0
 
     def init_item(self):
         for _, row in self._origin_df.iterrows():
@@ -162,12 +163,14 @@ class PatternGenerator:
             self._strips=self.generate_strips()
             self._segments.extend(self.generate_segments())
         dill_save(self._segments, segments_path)
+        # reset data
+        self.init_item()
         return self._segments
 
     def generate_segments(self):
 
         segments = []
-        with Pool(processes=8) as pool:
+        with Pool(processes=64) as pool:
             results = pool.map(self.generate_segment_x, [
                                x for x in self._strips])
 
@@ -250,6 +253,7 @@ class PatternGenerator:
         return best_segment
 
     def export_segment_figures(self,dir_path):
+        os.system("rm -rf {}".format(dir_path))
         for i, segment in enumerate(self._segments):
             plt.clf()
             plt.cla()
@@ -316,7 +320,7 @@ class PatternGenerator:
             2d array: m
         """
         m=[]
-        for _,row in self._item_require_df.iterrows:
+        for _,row in self._item_require_df.iterrows():
             item_n=[]
             item_length=row["item_length"]
             item_width=row["item_width"]
@@ -326,37 +330,36 @@ class PatternGenerator:
                 else:
                     n=seg.item_amount(item_length,item_width)+seg.item_amount(item_width,item_length)
                 item_n.append(n)
-        m.append(item_n)
+            m.append(item_n)
         return m
+    
+    def vector2pattern(self,vector,use_num):
+        pattern=Pattern([],use_num,self._L,self._W)
+        for i,seg in enumerate(self._segments):
+            for _ in range(int(vector[i])):
+                pattern.append(seg)
+        return pattern
 
     def generate_patterns(self):
-        aij = pd.read_csv('data/segments_item_matrix.csv', index_col=0)
-        lengths = pd.read_csv('data/segments_length_list.csv')
-        demand = pd.read_csv('data/item_require_list.csv')
-
-        # print(list(demand['0']))
-        # print(list(lengths['0']))
-        # print(aij.values)
-        # # exit(0)
-
-        demand = list(demand['0'])
-        lengths = list(lengths['0'])
-        aij = aij.values
         mycsp = CuttingStock(
             self._L,
             self.item_require_list,
             self.segments_length,
             self.segments_items_matrix,
         )
-
         mycsp.solve()
+        pattern_vectors=mycsp.patterns
+        pattern_selected=mycsp.solution
+        for index,num in pattern_selected.items():
+            pattern_vector=pattern_vectors[index]
+            pattern=self.vector2pattern(pattern_vector,num)
+            self._patterns.append(pattern)
         
-        print(mycsp.patterns)
-        print(mycsp.solution)
-        # print(mycsp.min_rolls)
-        sum(mycsp.solution.values())
+        self._pattern_number=sum(mycsp.solution.values())
+        return self._patterns
     
     def export_pattern_figure(self,dir_path):
+        os.system("rm -rf {}".format(dir_path))
         for i, pattern in enumerate(self._patterns):
             plt.clf()
             plt.cla()
@@ -366,7 +369,19 @@ class PatternGenerator:
             figure_path = os.path.join(dir_path, "pattern_{}.png".format(i))
             print("exporting pattern figure {}".format(figure_path))
             plt.savefig(figure_path)
-
+            
+    @property
+    def total_require_area(self):
+        total_area=0
+        for _,row in self._item_require_df.iterrows():
+            total_area+=row["item_length"]*row["item_width"]
+        return total_area
+    
+    @property
+    def use_ratio(self):
+        total_material_area=self._pattern_number*self._L*self._W
+        return self.total_require_area/total_material_area
+        
 
 if __name__ == "__main__":
     df = pd.read_csv(dataA_paths[0])
@@ -374,8 +389,13 @@ if __name__ == "__main__":
     print(len(pg._item_require_num))
     print(len(pg._item_shape))
     print(len(pg._q))
+    print("number of strips: {}".format(len(pg._strips)))
+    print("number of segments: {}".format(len(pg._segments)))
     # pg.export_segment_figures()
     pg.generate_patterns()
+    pg.export_pattern_figure(pattern_figures_dir)
+    print("the amount of using patterns is {}".format(pg._pattern_number))
+    print("the use ratio of the result is {:.2f}".format(pg.use_ratio))
 
     # print(pg.df.sort_values(by=["item_length","item_width"]))
     # print(pg.df.describe())
