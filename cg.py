@@ -154,6 +154,7 @@ class CuttingStock:
         """
         self._generate_patterns()
         self.master.model.setAttr("vType", self.master.vars, GRB.INTEGER)
+        self.master.model.params.timeLimit = 600
         self.master.model.optimize()
         print('finish master solve')
 
