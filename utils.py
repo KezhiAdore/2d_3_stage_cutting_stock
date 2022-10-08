@@ -48,9 +48,9 @@ class Strip:
             rect = gen_rect(left+i*self._l,bottom,self._l,self._w,(0/255,90/255,171/255))
             ax.add_line(rect)
         # plot remnant
-        left=left+self._e*self._l
-        if left<self._x:
-            remnant=gen_remnant(left,bottom,self._x-left,self._w)
+        use_length=self._e*self._l
+        if use_length<self._x:
+            remnant=gen_remnant(left+use_length,bottom,self._x-use_length,self._w)
             ax.add_patch(remnant)
             
     def to_rows(self,material,plate_id,left,bottom):
