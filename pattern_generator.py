@@ -5,7 +5,7 @@ import dill
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from multiprocessing import Pool
+from concurrent.futures import ProcessPoolExecutor
 
 from settings import dataA_paths, dataB_paths, segments_path, \
     segment_figures_dir,pattern_figures_dir,P1_ans_dir
@@ -166,9 +166,9 @@ class PatternGenerator:
     def generate_segments(self):
 
         segments = []
-        with Pool(processes=16) as pool:
-            results = pool.map(self.generate_segment_x, [
-                               x for x in self._strips])
+        with ProcessPoolExecutor(32) as pool:
+            msgs = [ x for x in self._strips]
+            results = pool.map(self.generate_segment_x, msgs, chunksize=30)
 
         for i, r in enumerate(results):
             if not r.empty:
@@ -184,7 +184,7 @@ class PatternGenerator:
         dp_n = {}
         dp_segment = {}
         dp_F[0] = 0
-        dp_segment[0] = Segment(x, [])
+        dp_segment[0] = Segment(x, self._W, [])
         for length in self._item_require_num.keys():
             dp_n[length] = {}
             for width in self._item_require_num[length].keys():
@@ -370,9 +370,9 @@ class PatternGenerator:
         self._plate_number=sum(mycsp.solution.values())
         return self._patterns
     
-    def export_patterns(self,filepath=None):
+    def export_patterns(self,filepath=None,start_plate_id=0):
         compose_df=pd.DataFrame()
-        plate_id=0
+        plate_id=start_plate_id
         for pattern in self._patterns:
             for _ in range(pattern.use_num):
                 rows=pattern.to_rows(plate_id)
@@ -426,7 +426,7 @@ class PatternGenerator:
             plt.plot()
             figure_path = os.path.join(dir_path, "pattern_{}.png".format(i))
             print("exporting pattern figure {}".format(figure_path))
-            plt.savefig(figure_path)
+            plt.savefig(figure_path,dpi=600)
             
     @property
     def total_require_area(self):
@@ -452,12 +452,12 @@ if __name__ == "__main__":
     
     for i in range(1,5):
         df = pd.read_csv(dataA_paths[i-1])
-        pg = PatternGenerator(df, L=2440, W=1220)
+        pg = PatternGenerator(df, L=2440, W=1220,use_cache=True)
         logger.info("-"*10+"processing dataset A{}".format(i+1)+"-"*10)
         logger.info("item require number: {}".format(len(pg._item_require_num)))
         logger.info("number of strips: {}".format(len(pg._strips)))
         logger.info("number of segments: {}".format(len(pg._segments)))
-        pg.export_segment_figures(os.path.join(segment_figures_dir,"A{}".format(i)))
+        # pg.export_segment_figures(os.path.join(segment_figures_dir,"A{}".format(i)))
         pg.generate_patterns()
         pg.export_patterns(os.path.join(P1_ans_dir,"A{}.csv".format(i)))
         pg.export_pattern_figure(os.path.join(pattern_figures_dir,"A{}".format(i)))
@@ -467,5 +467,6 @@ if __name__ == "__main__":
         logger.info("The use ratio of the result is {:.2f}%".format(pg.use_ratio*100))
         logger.info("-"*10+"dataset A{} processing finished".format(i)+"-"*10)
         print()
+        exit()
     # print(pg.df.sort_values(by=["item_length","item_width"]))
     # print(pg.df.describe())

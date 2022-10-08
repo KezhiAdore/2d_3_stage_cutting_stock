@@ -1,7 +1,27 @@
 from matplotlib import pyplot as plt
 from matplotlib import patches
+from matplotlib import lines
 import dill
 
+def gen_remnant(x,y,width,height):
+    remnant=patches.Rectangle(
+        (x,y),
+        width=width,
+        height=height,
+        hatch="/",
+        fill=True,
+        color=(0.8,0.8,0.8)
+    )
+    return remnant
+
+def gen_rect(x,y,width,height,color,linewidth=1.5):
+    rect=lines.Line2D(
+        xdata=[x,x,x+width,x+width,x],
+        ydata=[y,y+height,y+height,y,y],
+        color=color,
+        linewidth=linewidth,
+    )
+    return rect
 
 class Strip:
     def __init__(self, x, l, w, e, v) -> None:
@@ -25,15 +45,14 @@ class Strip:
 
     def plot(self, ax, left, bottom):
         for i in range(self.e):
-            rect = patches.Rectangle(
-                (left+i*self._l, bottom),
-                width=self._l,
-                height=self._w,
-                fill=False
-            )
-            ax.add_patch(rect)
-        plt.plot()
-    
+            rect = gen_rect(left+i*self._l,bottom,self._l,self._w,(0/255,90/255,171/255))
+            ax.add_line(rect)
+        # plot remnant
+        left=left+self._e*self._l
+        if left<self._x:
+            remnant=gen_remnant(left,bottom,self._x-left,self._w)
+            ax.add_patch(remnant)
+            
     def to_rows(self,material,plate_id,left,bottom):
         rows=[]
         for i in range(self.e):
@@ -85,8 +104,9 @@ class Strip:
 
 
 class Segment:
-    def __init__(self, x, strips) -> None:
+    def __init__(self, x, W, strips) -> None:
         self._x = x
+        self._W = W
         self._strips = strips
 
     def __str__(self) -> str:
@@ -110,7 +130,27 @@ class Segment:
         bottom = 0
         for strip in self._strips:
             strip.plot(ax, left, bottom)
+            # plot 2nd cutting line
+            if bottom>0:
+                cut_line=lines.Line2D(
+                    xdata=[left,left+strip.x],
+                    ydata=[bottom,bottom],
+                    linewidth=1.5,
+                    color=(0,1,0)   # green
+                )
+                ax.add_line(cut_line)
             bottom += strip.w
+        # plot remnant
+        if bottom<self._W:
+            cut_line=lines.Line2D(
+                    xdata=[left,left+strip.x],
+                    ydata=[bottom,bottom],
+                    linewidth=1.5,
+                    color=(0,1,0)   # green
+                )
+            ax.add_line(cut_line)
+            remnant=gen_remnant(left,bottom,self._x,self._W-bottom)
+            ax.add_patch(remnant)
     
     def to_rows(self,material,plate_id,left):
         bottom = 0
@@ -174,18 +214,28 @@ class Pattern:
         self._segments.append(segment)
 
     def plot(self, ax):
-        rect = patches.Rectangle(
-                (0, 0),
-                width=self._L,
-                height=self._W,
-                fill=False,
-                edgecolor=(0,1,0)
-            )
-        ax.add_patch(rect)
         left = 0
         for segment in self._segments:
             segment.plot(ax, left)
             left += segment.x
+            # plot 1st cutting line
+            if left<self._L:
+                cut_line=lines.Line2D(
+                    xdata=[left,left],
+                    ydata=[0,self._W],
+                    linewidth=1.5,
+                    color=(1,0,0)   # red
+                )
+                ax.add_line(cut_line)
+        
+        # plot remnant
+        if left<self._L:
+            remnant=gen_remnant(left,0,self._L-left,self._W)
+            ax.add_patch(remnant)
+        
+        # plot plate
+        rect=gen_rect(0,0,self._L,self._W,(0,0,0))
+        ax.add_line(rect)
     
     def to_rows(self,plate_id):
         left = 0
