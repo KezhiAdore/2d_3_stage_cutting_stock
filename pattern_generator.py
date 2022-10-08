@@ -7,7 +7,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from multiprocessing import Pool
 
-from settings import dataA_paths, dataB_paths, segments_path, segment_figures_dir,pattern_figures_dir
+from settings import dataA_paths, dataB_paths, segments_path, \
+    segment_figures_dir,pattern_figures_dir,P1_ans_dir
 from utils import Strip, Segment, Pattern,dill_load, dill_save
 from cg import CuttingStock
 import settings
@@ -21,8 +22,10 @@ for name, value in settings.__dict__.items():
 
 class PatternGenerator:
 
-    def __init__(self, df: pd.DataFrame, L, W) -> None:
+    def __init__(self, df: pd.DataFrame, L, W, use_cache=False) -> None:
         self._origin_df = df
+        self._use_cache = use_cache
+        self._material = df["item_material"][0]
         self._item_shape = []   # shape of all items, including rotation
         self._item_require_num = {} # the requirement of each item, excluding rotation
         # table of items requirements, including id, require number, length and width
@@ -39,10 +42,11 @@ class PatternGenerator:
         self._strips = self.generate_strips()
 
         self._segments = []
+        self._not_covered_item_list=[]
         self.repeat_generate_segments()
         
         self._patterns=[]
-        self._pattern_number=0
+        self._plate_number=0
 
     def init_item(self):
         self._item_shape = []
@@ -143,14 +147,18 @@ class PatternGenerator:
         return strips
 
     def repeat_generate_segments(self):
-        if os.path.exists(segments_path):
+        if os.path.exists(segments_path) and self._use_cache:
             self._segments = dill_load(segments_path)
+            
         while not self.check_segments_coverage():
             self.reduce_require_item_from_segments()
             self._q=self.q_set()
             self._strips=self.generate_strips()
             self._segments.extend(self.generate_segments())
+            
         dill_save(self._segments, segments_path)
+        # remove duplicates
+        self._segments=list(set(self._segments))
         # reset data
         self.init_item()
         return self._segments
@@ -158,7 +166,7 @@ class PatternGenerator:
     def generate_segments(self):
 
         segments = []
-        with Pool(processes=64) as pool:
+        with Pool(processes=16) as pool:
             results = pool.map(self.generate_segment_x, [
                                x for x in self._strips])
 
@@ -201,6 +209,9 @@ class PatternGenerator:
                         "can not find length={},width={} in item list".format(length, width))
                 e_max = min(int(x/item_length), strip.e-n)
                 value = strip.v
+                # # heuristic value
+                # if (item_length,item_width) in self._not_covered_item_list:
+                #     value+=self._L*self._W
                 new_F = dp_F[y-math.ceil(item_width)]+e_max*value
                 if new_F > max_F:
                     max_F = copy.deepcopy(new_F)
@@ -249,7 +260,7 @@ class PatternGenerator:
             fig, ax = plt.subplots()
             segment.plot(ax)
             plt.plot()
-            figure_path = os.path.join(dir_path, "segment_{}_{}.png".format(i, segment.x))
+            figure_path = os.path.join(dir_path, "segment_{}_{}.png".format(i, int(segment.x)))
             print("exporting segment figure {}".format(figure_path))
             plt.savefig(figure_path)
 
@@ -288,6 +299,18 @@ class PatternGenerator:
                 return False
         return True
     
+    def not_covered_item_list(self):
+        not_cover_list=[]
+        for _, row in self._origin_df.iterrows():
+            item_length = row["item_length"]
+            item_width = row["item_width"]
+            item_amount = self.segments_item_amount(item_length, item_width)
+            if item_amount == 0:
+                not_cover_list.append((item_length,item_width))
+                not_cover_list.append((item_width,item_length))
+        not_cover_list=list(set(not_cover_list))
+        return not_cover_list
+
     def reduce_require_item_from_segments(self):
         for seg in self._segments:
             for strip in seg.strips:
@@ -323,7 +346,7 @@ class PatternGenerator:
         return m
     
     def vector2pattern(self,vector,use_num):
-        pattern=Pattern([],use_num,self._L,self._W)
+        pattern=Pattern([],use_num,self._L,self._W,self._material)
         for i,seg in enumerate(self._segments):
             for _ in range(int(vector[i])):
                 pattern.append(seg)
@@ -344,8 +367,53 @@ class PatternGenerator:
             pattern=self.vector2pattern(pattern_vector,num)
             self._patterns.append(pattern)
         
-        self._pattern_number=sum(mycsp.solution.values())
+        self._plate_number=sum(mycsp.solution.values())
         return self._patterns
+    
+    def export_patterns(self,filepath=None):
+        compose_df=pd.DataFrame()
+        plate_id=0
+        for pattern in self._patterns:
+            for _ in range(pattern.use_num):
+                rows=pattern.to_rows(plate_id)
+                plate_id+=1
+                for row in rows:
+                    compose_df=compose_df.append(row,ignore_index=True)
+                
+        # add item id to compose table
+        for _,row in self._origin_df.iterrows():
+            item_length=row["item_length"]
+            item_width=row["item_width"]
+            item_id=row["item_id"]
+            item_index_list=[]
+            
+            item_index_list.extend(
+                list(compose_df.query("item_length==@item_length & item_width==@item_width & item_id.isnull()").index)
+            )
+            item_index_list.extend(
+                list(compose_df.query("item_length==@item_width & item_width==@item_length & item_id.isnull()").index)
+            )
+            if item_index_list==[]:
+                raise ValueError("item whose length is {} and width is {} is not covered".format(item_length,item_width))
+            else:
+                item_index=item_index_list[0]
+                compose_df["item_id"][item_index]=item_id
+        
+        column_map={
+            "material": "原片材质",
+            "plate_id": "原片序号",
+            "item_id": "产品id",
+            "left": "产品x坐标",
+            "bottom": "产品y坐标",
+            "item_length": "产品x方向长度",
+            "item_width": "产品y方向长度",
+        }
+        compose_df=compose_df.rename(columns=column_map)
+        
+        if filepath:
+            compose_df.to_csv(filepath)
+        
+        return compose_df
     
     def export_pattern_figure(self,dir_path):
         os.system("rm -rf {}".format(dir_path))
@@ -369,23 +437,35 @@ class PatternGenerator:
     
     @property
     def use_ratio(self):
-        total_material_area=self._pattern_number*self._L*self._W
+        total_material_area=self._plate_number*self._L*self._W
         return self.total_require_area/total_material_area
         
 
 if __name__ == "__main__":
-    df = pd.read_csv(dataA_paths[0])
-    pg = PatternGenerator(df, L=2440, W=1220)
-    print(len(pg._item_require_num))
-    print(len(pg._item_shape))
-    print(len(pg._q))
-    print("number of strips: {}".format(len(pg._strips)))
-    print("number of segments: {}".format(len(pg._segments)))
-    # pg.export_segment_figures()
-    pg.generate_patterns()
-    pg.export_pattern_figure(pattern_figures_dir)
-    print("the amount of using patterns is {}".format(pg._pattern_number))
-    print("the use ratio of the result is {:.2f}".format(pg.use_ratio))
-
+    import logging
+    logger=logging.getLogger("logger")
+    logger.setLevel(logging.DEBUG)
+    fh = logging.FileHandler(filename="pattern.log",mode='w')
+    log_fmt = logging.Formatter(fmt="%(asctime)s - %(levelname)-s - %(message)s")
+    fh.setFormatter(log_fmt)
+    logger.addHandler(fh)
+    
+    for i in range(4):
+        df = pd.read_csv(dataA_paths[i])
+        pg = PatternGenerator(df, L=2440, W=1220)
+        logger.info("-"*10+"processing dataset A{}".format(i+1)+"-"*10)
+        logger.info("item require number: {}".format(len(pg._item_require_num)))
+        logger.info("number of strips: {}".format(len(pg._strips)))
+        logger.info("number of segments: {}".format(len(pg._segments)))
+        # pg.export_segment_figures(os.path.join(segment_figures_dir,"A{}".format(i)))
+        pg.generate_patterns()
+        # pg.export_patterns(os.path.join(P1_ans_dir,"A{}.csv".format(i)))
+        # pg.export_pattern_figure(os.path.join(pattern_figures_dir,"A{}".format(i)))
+        logger.info("The amount of using plates is {}".format(pg._plate_number))
+        logger.info("The total area of all items is {:.2f}".format(pg.total_require_area))
+        logger.info("The total area of used plates {:.2f}".format(pg._plate_number*pg._L*pg._W))
+        logger.info("The use ratio of the result is {:.2f}%".format(pg.use_ratio*100))
+        logger.info("-"*10+"dataset A{} processing finished".format(i+1)+"-"*10)
+        print()
     # print(pg.df.sort_values(by=["item_length","item_width"]))
     # print(pg.df.describe())

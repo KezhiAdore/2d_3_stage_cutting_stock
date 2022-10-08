@@ -33,7 +33,36 @@ class Strip:
             )
             ax.add_patch(rect)
         plt.plot()
-
+    
+    def to_rows(self,material,plate_id,left,bottom):
+        rows=[]
+        for i in range(self.e):
+            row={
+                "material":material,
+                "plate_id":plate_id,
+                "item_id":None,
+                "left":left+i*self._l,
+                "bottom":bottom,
+                "item_length":self._l,
+                "item_width":self._w,
+            }
+            rows.append(row)
+        return rows
+    
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o,self.__class__):
+            return self.__dict__==__o.__dict__
+        return False
+    
+    def __hash__(self) -> int:
+        return hash((
+            self._x,
+            self._l,
+            self._w,
+            self._e,
+            self._v
+        ))
+            
     @property
     def x(self):
         return self._x
@@ -65,7 +94,15 @@ class Segment:
         for strip in self._strips:
             s += str(strip)+"\n"
         return s
-
+    
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o,self.__class__):
+            return self.__dict__==__o.__dict__
+        return False
+    
+    def __hash__(self) -> int:
+        return hash(tuple(self._strips))
+    
     def append(self, strip):
         self._strips.append(strip)
 
@@ -74,6 +111,14 @@ class Segment:
         for strip in self._strips:
             strip.plot(ax, left, bottom)
             bottom += strip.w
+    
+    def to_rows(self,material,plate_id,left):
+        bottom = 0
+        rows=[]
+        for strip in self._strips:
+            rows.extend(strip.to_rows(material,plate_id,left,bottom))
+            bottom += strip.w
+        return rows
 
     def item_amount(self, length, width):
         """amount of item whose length and width is given
@@ -112,11 +157,12 @@ class Segment:
 
 
 class Pattern:
-    def __init__(self, segments, use_num, L, W) -> None:
+    def __init__(self, segments, use_num, L, W, material) -> None:
         self._segments = segments
         self._use_num=use_num
         self._L = L
         self._W = W
+        self._material=material
 
     def __str__(self) -> str:
         s = ""
@@ -140,6 +186,14 @@ class Pattern:
         for segment in self._segments:
             segment.plot(ax, left)
             left += segment.x
+    
+    def to_rows(self,plate_id):
+        left = 0
+        rows=[]
+        for segment in self._segments:
+            rows.extend(segment.to_rows(self._material,plate_id,left))
+            left += segment.x
+        return rows
     
     @property
     def use_num(self):
