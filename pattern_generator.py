@@ -168,7 +168,7 @@ class PatternGenerator:
         segments = []
         with ProcessPoolExecutor(32) as pool:
             msgs = [ x for x in self._strips]
-            results = pool.map(self.generate_segment_x, msgs, chunksize=30)
+            results = pool.map(self.generate_segment_x, msgs, chunksize=25)
 
         for i, r in enumerate(results):
             if not r.empty:
@@ -409,11 +409,12 @@ class PatternGenerator:
             "item_width": "产品y方向长度",
         }
         compose_df=compose_df.rename(columns=column_map)
+        compose_df.dropna()
         
         if filepath:
             compose_df.to_csv(filepath)
         
-        return compose_df
+        return compose_df, plate_id
     
     def export_pattern_figure(self,dir_path):
         os.system("rm -rf {}".format(dir_path))
