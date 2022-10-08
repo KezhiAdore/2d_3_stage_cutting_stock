@@ -7,6 +7,9 @@ import settings
 from pattern_generator import PatternGenerator
 from settings import dataA_paths,dataB_paths,P1_ans_dir,pattern_figures_dir
 
+SOLVE_A=True
+SOLVE_B=False
+
 for name, value in settings.__dict__.items():
     if "dir" in name:
         dir_path = value
@@ -40,35 +43,45 @@ def solve_B(data_path,ans_path,figure_dir,L,W):
         "total_require_area": None,
         "use_ratio": None,
     }
+    return result
 
 if __name__=="__main__":
     L=2440
     W=1220
-    # solve problem A
-    start_time=datetime.datetime.now()
-    with ProcessPoolExecutor(4) as pool:
-        msgs=[(
-            dataA_paths[i],
-            os.path.join(P1_ans_dir,f"A{i+1}.csv"),
-            os.path.join(pattern_figures_dir,f"A{i+1}"),
-            L,W,
-        ) for i in range(4)]
+    
+    if SOLVE_A:
+        # solve problem A
+        start_time=datetime.datetime.now()
         
-        results = pool.map(solve_A,msgs)
+        with ProcessPoolExecutor(4) as pool:
+            msgs=[(
+                dataA_paths[i],
+                os.path.join(P1_ans_dir,f"A{i+1}.csv"),
+                os.path.join(pattern_figures_dir,f"A{i+1}"),
+                L,W,
+            ) for i in range(4)]
+            results = pool.map(solve_A,msgs)
+            
+        for i, result in enumerate(results):
+            print(f"The result of dataset A{i+1} is following: ")
+            print(result)
         
-    for i, result in enumerate(results):
-        print(f"The result of dataset A{i+1} is following: ")
-        print(result)
+        end_time=datetime.datetime.now()
+        time_cost=end_time-start_time
+        print("time cost:",time_cost)
     
-    end_time=datetime.datetime.now()
-    time_cost=end_time-start_time
-    print("time cost:",time_cost)
-    
-    # solve problem B
-    # with ProcessPoolExecutor(5) as pool:
-    #     msgs=[]
-    #     results = pool.map(solve_B,msgs)
-    
-    # for i,result in enumerate(results):
-    #     print(f"The result of dataset B{i+1} is following: ")
-    #     print(result)
+    if SOLVE_B:
+        # solve problem B
+        start_time=datetime.datetime.now()
+        
+        with ProcessPoolExecutor(5) as pool:
+            msgs=[]
+            results = pool.map(solve_B,msgs)
+        
+        for i,result in enumerate(results):
+            print(f"The result of dataset B{i+1} is following: ")
+            print(result)
+        
+        end_time=datetime.datetime.now()
+        time_cost=end_time-start_time
+        print("time cost:",time_cost)
