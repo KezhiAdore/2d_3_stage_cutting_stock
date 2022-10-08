@@ -422,6 +422,7 @@ class PatternGenerator:
             plt.clf()
             plt.cla()
             fig, ax = plt.subplots()
+            ax.set_aspect(1)
             pattern.plot(ax)
             plt.plot()
             figure_path = os.path.join(dir_path, "pattern_{}.png".format(i))

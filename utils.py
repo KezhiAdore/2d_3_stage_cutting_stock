@@ -14,7 +14,7 @@ def gen_remnant(x,y,width,height):
     )
     return remnant
 
-def gen_rect(x,y,width,height,color,linewidth=1.5):
+def gen_rect(x,y,width,height,color,linewidth=1):
     rect=lines.Line2D(
         xdata=[x,x,x+width,x+width,x],
         ydata=[y,y+height,y+height,y,y],
@@ -127,28 +127,26 @@ class Segment:
         self._strips.append(strip)
 
     def plot(self, ax, left=0):
+        # plot strips
         bottom = 0
         for strip in self._strips:
             strip.plot(ax, left, bottom)
-            # plot 2nd cutting line
-            if bottom>0:
-                cut_line=lines.Line2D(
-                    xdata=[left,left+strip.x],
-                    ydata=[bottom,bottom],
-                    linewidth=1.5,
-                    color=(0,1,0)   # green
-                )
-                ax.add_line(cut_line)
             bottom += strip.w
-        # plot remnant
-        if bottom<self._W:
+        
+        # plot 2nd cutting line
+        bottom=0
+        for strip in self._strips:
+            bottom += strip.w
             cut_line=lines.Line2D(
                     xdata=[left,left+strip.x],
                     ydata=[bottom,bottom],
-                    linewidth=1.5,
+                    linewidth=1,
                     color=(0,1,0)   # green
                 )
             ax.add_line(cut_line)
+        
+        # plot remnant
+        if bottom<self._W:
             remnant=gen_remnant(left,bottom,self._x,self._W-bottom)
             ax.add_patch(remnant)
     
@@ -214,19 +212,23 @@ class Pattern:
         self._segments.append(segment)
 
     def plot(self, ax):
+        # plot segments
         left = 0
         for segment in self._segments:
             segment.plot(ax, left)
             left += segment.x
-            # plot 1st cutting line
-            if left<self._L:
-                cut_line=lines.Line2D(
-                    xdata=[left,left],
-                    ydata=[0,self._W],
-                    linewidth=1.5,
-                    color=(1,0,0)   # red
-                )
-                ax.add_line(cut_line)
+        
+        # plot 1st cutting line
+        left = 0
+        for segment in self._segments:
+            left += segment.x
+            cut_line=lines.Line2D(
+                xdata=[left,left],
+                ydata=[0,self._W],
+                linewidth=1,
+                color=(1,0,0)   # red
+            )
+            ax.add_line(cut_line)
         
         # plot remnant
         if left<self._L:
