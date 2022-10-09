@@ -59,7 +59,7 @@ def solve_B(args):
         batch_info=batch_generate(order_info,data_prefix,batch_size,use_cache=False)
         divided_csv(data_path,batch_info,data_prefix+f"_{batch_size}")
     except:
-        return
+        return None
     
     divided_csv_dir=os.path.join(division_dir,data_prefix+f"_{batch_size}")
     batch_num_list=os.listdir(divided_csv_dir)
@@ -74,7 +74,7 @@ def solve_B(args):
             msgs.append((batch_num,material,filepath,batch_figure_dir,L,W))
     
     # multiprocessing computing
-    with ProcessPoolExecutor(60) as pool:
+    with ProcessPoolExecutor(300) as pool:
         results=pool.map(solve_batch,msgs,chunksize=5)
         
     # sort results
@@ -160,25 +160,25 @@ if __name__=="__main__":
         # solve problem B
         start_time=datetime.datetime.now()
         msgs=[]
-        for batch_size in range(60,30,-1):
+        for batch_size in range(40,30,-1):
             msgs.extend([(
             dataB_paths[i],
             os.path.join(P2_ans_dir,f"B{i+1}.csv"),
             os.path.join(pattern_figures_dir,f"B{i+1}"),
             os.path.join(P2_ans_dir,f"B{i+1}.json"),
             L,W,batch_size) for i in range(5)])
+        solve_B(msgs[0])
+        # with ProcessPoolExecutor(5) as pool:
+        #     results = pool.map(solve_B,msgs,chunksize=30)
         
-        with ProcessPoolExecutor(5) as pool:
-            results = pool.map(solve_B,msgs,chunksize=30)
+        # test_result={}
+        # for i,r in enumerate(results):
+        #     batch_size=msgs[i][-1]
+        #     if batch_size not in test_result.keys():
+        #         test_result[batch_size]=[]
+        #     test_result[batch_size].append(r)
         
-        test_result={}
-        for i,r in enumerate(results):
-            batch_size=msgs[i][-1]
-            if batch_size not in test_result.keys():
-                test_result[batch_size]=[]
-            test_result[batch_size].append(r)
-        
-        json_save(test_result,"test_B.json")
+        # json_save(test_result,"test_B.json")
         
         end_time=datetime.datetime.now()
         time_cost=end_time-start_time
