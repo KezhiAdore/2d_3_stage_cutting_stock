@@ -20,7 +20,7 @@ def batch_generate(order_info, data_prefix, batch_count = 54, use_cache = True):
     order_material_variaty = [sum(order_material_list[i])  for i in range(len(order_material_list))]
     #patterns是一个二维数组，第一维度是batch索引，第二维度是order索引
     order_material_list = np.array(order_material_list)
-    order_material_list = 1-order_material_list / order_material_list.max(axis=1, keepdims=True)
+    # order_material_list = order_material_list / order_material_list.max(axis=1, keepdims=True)
     # 建立dataframe关联id，area，num，material，variaty
     df = pd.DataFrame(columns=['order_index', 'area', 'num', 'material_list', 'variaty'])
     df['order_index'] = range(len(order_area_list))
