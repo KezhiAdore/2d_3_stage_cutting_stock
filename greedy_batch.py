@@ -97,7 +97,7 @@ def batch_generate(order_info, data_prefix, batch_count = 54, use_cache = True):
             correlation_list[max_index] = -1
         if j>=batch_count-1:
             print('得增加batch数量')
-            exit(0)
+            raise ValueError(f'batch count {batch_count} is too small 得增加batch数量')
         print(batch)
 
     #统计batch中的order的总数
