@@ -27,6 +27,7 @@ def solve_batch(args)->PatternGenerator:
     pg.generate_patterns()
     pg.export_patterns()
     # pg.export_pattern_figure(batch_figure_dir)
+    print(f"solved batch {filepath}")
     return pg
             
 def solve_A(args):
@@ -74,8 +75,8 @@ def solve_B(args):
             msgs.append((batch_num,material,filepath,batch_figure_dir,L,W))
     
     # multiprocessing computing
-    with ProcessPoolExecutor(300) as pool:
-        results=pool.map(solve_batch,msgs,chunksize=5)
+    with ProcessPoolExecutor(9) as pool:
+        results=pool.map(solve_batch,msgs,chunksize=20)
         
     # sort results
     pg_dict={}
@@ -160,25 +161,25 @@ if __name__=="__main__":
         # solve problem B
         start_time=datetime.datetime.now()
         msgs=[]
-        for batch_size in range(40,30,-1):
+        for batch_size in range(40,30,-2):
             msgs.extend([(
             dataB_paths[i],
             os.path.join(P2_ans_dir,f"B{i+1}.csv"),
             os.path.join(pattern_figures_dir,f"B{i+1}"),
             os.path.join(P2_ans_dir,f"B{i+1}.json"),
             L,W,batch_size) for i in range(5)])
-        solve_B(msgs[0])
-        # with ProcessPoolExecutor(5) as pool:
-        #     results = pool.map(solve_B,msgs,chunksize=30)
+        # solve_B(msgs[0])
+        with ProcessPoolExecutor(25) as pool:
+            results = pool.map(solve_B,msgs,chunksize=1)
         
-        # test_result={}
-        # for i,r in enumerate(results):
-        #     batch_size=msgs[i][-1]
-        #     if batch_size not in test_result.keys():
-        #         test_result[batch_size]=[]
-        #     test_result[batch_size].append(r)
+        test_result={}
+        for i,r in enumerate(results):
+            batch_size=msgs[i][-1]
+            if batch_size not in test_result.keys():
+                test_result[batch_size]=[]
+            test_result[batch_size].append(r)
         
-        # json_save(test_result,"test_B.json")
+        json_save(test_result,"test_B.json")
         
         end_time=datetime.datetime.now()
         time_cost=end_time-start_time
