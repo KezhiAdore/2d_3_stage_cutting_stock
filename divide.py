@@ -22,7 +22,11 @@ def divided_csv(path,batch_info,data_prefix):
     #     print("-----------------------")
     # print(dataframe_batch_list[3])
     # print('finish')
-        
+    
+    # clear division cache
+    data_division_dir=os.path.join(division_dir,data_prefix)
+    os.system(f"rm -rf d{data_division_dir}")
+
     for i in range(len(dataframe_batch_list)):
         # 按照item_material拆分dataframe
         item_material_type = dataframe_batch_list[i]['item_material'].unique()
