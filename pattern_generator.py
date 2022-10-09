@@ -197,7 +197,7 @@ class PatternGenerator:
         return segments
 
     def generate_segment_x(self, x):
-        print("generate segment x: {}".format(x))
+        # print("generate segment x: {}".format(x))
         strips = self._strips[x]
         # initial dp function
         dp_F = {}
@@ -267,7 +267,7 @@ class PatternGenerator:
                         "can not find length={},width={} in item list".format(length, width))
 
         best_segment = dp_segment[self._W]
-        print("generate segment x: {} complete".format(x))
+        # print("generate segment x: {} complete".format(x))
 
         return best_segment
 

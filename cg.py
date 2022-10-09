@@ -15,7 +15,7 @@ class MasterProblem:
         self.aij = aij
         self.vars = self.model.addVars(num_patterns, obj=1, name="Pattern")
         aij_pattern_i_k = np.dot(np.array(aij), np.array(patterns).T)
-        print('finish aij_pattern_i_k')
+        # print('finish aij_pattern_i_k')
         self.constrs = self.model.addConstrs((gp.quicksum(aij_pattern_i_k[i][pattern]*self.vars[pattern]
                                                           for pattern in range(num_patterns))
                                               >= demand[i] for i in range(len(demand))),
@@ -25,7 +25,7 @@ class MasterProblem:
         # Turning off output because of the iterative procedure
         self.model.params.outputFlag = 0
         self.model.update()
-        print('finish master setup')
+        # print('finish master setup')
 
     def update(self, pattern, index):
         # j 通过aij变成i
@@ -34,7 +34,7 @@ class MasterProblem:
         self.vars[index] = self.model.addVar(obj=1, column=new_col,
                                              name=f"Pattern[{index}]")
         self.model.update()
-        print('finish master update')
+        # print('finish master update')
 
 
 class SubProblem:
@@ -70,19 +70,19 @@ class SubProblem:
         # the entering column.
         self.model.params.bestBdStop = 1
         self.model.update()
-        print('finish sub setup')
+        # print('finish sub setup')
 
     def uptate_forbidden(self, pattern):
         for i in range(len(pattern)):
             if pattern[i] > 0:
                 self.forbidden[i] = 0
-        print('finish forbidden update')
+        # print('finish forbidden update')
 
     def update(self, duals):
         duals_new = self.dual_axis(duals)
         self.model.setAttr("obj", self.vars, duals_new)
         self.model.update()
-        print('finish sub update')
+        # print('finish sub update')
 
 
 class CuttingStock:
@@ -92,7 +92,7 @@ class CuttingStock:
         # self.pieces, self.lengths, self.demand = gp.multidict(pieces)
         self.I = len(demand)
         self.J = len(lengths)
-        print(self.I, self.J)
+        # print(self.I, self.J)
         self.demand = demand
         self.lengths = lengths
         self.aij = aij
@@ -103,7 +103,7 @@ class CuttingStock:
         self.solution = {}
         self.master = MasterProblem()
         self.subproblem = SubProblem()
-        print('finish init')
+        # print('finish init')
 
     def _initialize_patterns(self):
         # Find trivial patterns that consider one final piece at a time,
@@ -116,7 +116,7 @@ class CuttingStock:
             pattern[i] = 1
             patterns.append(pattern)
         self.patterns = patterns
-        print('finish init patterns')
+        # print('finish init patterns')
 
     def _generate_patterns(self):
         self._initialize_patterns()
@@ -125,7 +125,7 @@ class CuttingStock:
             self.plate_length, self.lengths, self.duals, self.aij)
         while True:
             self.master.model.optimize()
-            print('Obj: %g' % self.master.model.objVal)
+            # print('Obj: %g' % self.master.model.objVal)
             self.duals = self.master.model.getAttr("pi", self.master.constrs)
             self.subproblem.update(self.duals)
 
@@ -137,11 +137,11 @@ class CuttingStock:
             for piece, var in self.subproblem.vars.items():
                 if var.x > 0.5:
                     pattern[piece] = round(var.x)
-                    print(piece)
+                    # print(piece)
             self.master.update(pattern, len(self.patterns))
             self.patterns.append(pattern)
 
-            print(f"Reduced cost: {reduced_cost:.2f}")
+            # print(f"Reduced cost: {reduced_cost:.2f}")
 
     def solve(self):
         """
@@ -156,7 +156,7 @@ class CuttingStock:
         self.master.model.setAttr("vType", self.master.vars, GRB.INTEGER)
         self.master.model.params.timeLimit = 300
         self.master.model.optimize()
-        print('finish master solve')
+        # print('finish master solve')
 
         for pattern, var in self.master.vars.items():
             if var.x > 0.5:
