@@ -11,7 +11,7 @@ from packing import presolve_csv
 from greedy_batch import batch_generate
 from divide import divided_csv
 
-SOLVE_A=False
+SOLVE_A=True
 SOLVE_B=True
 
 for name, value in settings.__dict__.items():
@@ -26,7 +26,7 @@ def solve_batch(args)->PatternGenerator:
     pg=PatternGenerator(df,L,W,multi_process=False)
     pg.generate_patterns()
     pg.export_patterns()
-    # pg.export_pattern_figure(batch_figure_dir)
+    pg.export_pattern_figure(batch_figure_dir)
     print(f"solved batch {filepath}")
     return pg
             
@@ -56,13 +56,10 @@ def solve_B(args):
     data_prefix=data_path[data_path.rfind("/")+1:].replace(".csv","")
     
     order_info=presolve_csv(data_path,data_prefix)
-    try:
-        batch_info=batch_generate(order_info,data_prefix,batch_size,use_cache=False)
-        divided_csv(data_path,batch_info,data_prefix+f"_{batch_size}")
-    except:
-        return None
+    batch_info=batch_generate(order_info,data_prefix,batch_size,use_cache=False)
+    divided_csv(data_path,batch_info,data_prefix)
     
-    divided_csv_dir=os.path.join(division_dir,data_prefix+f"_{batch_size}")
+    divided_csv_dir=os.path.join(division_dir,data_prefix)
     batch_num_list=os.listdir(divided_csv_dir)
     
     msgs=[]
@@ -75,8 +72,8 @@ def solve_B(args):
             msgs.append((batch_num,material,filepath,batch_figure_dir,L,W))
     
     # multiprocessing computing
-    with ProcessPoolExecutor(9) as pool:
-        results=pool.map(solve_batch,msgs,chunksize=20)
+    with ProcessPoolExecutor(50) as pool:
+        results=pool.map(solve_batch,msgs,chunksize=5)
         
     # sort results
     pg_dict={}
@@ -109,14 +106,14 @@ def solve_B(args):
         batch_plate_num=plate_id-last_batch_plate_id
         last_batch_plate_id=plate_id
         batch_plate_area=batch_plate_num*L*W
-        # result[batch_num]={
-        #     "batch_plate_num": batch_plate_num,
-        #     "batch_plate_area": batch_plate_area,
-        #     "batch_require_area": batch_require_area,
-        #     "batch_use_ratio": batch_require_area/batch_plate_area,
-        # }
+        result[batch_num]={
+            "batch_plate_num": batch_plate_num,
+            "batch_plate_area": batch_plate_area,
+            "batch_require_area": batch_require_area,
+            "batch_use_ratio": batch_require_area/batch_plate_area,
+        }
             
-    # ans_df.to_csv(ans_path)
+    ans_df.to_csv(ans_path)
     
     total_plate_area=plate_id*L*W
     use_ratio=total_require_area/total_plate_area
@@ -128,7 +125,7 @@ def solve_B(args):
         "total_require_area": total_require_area,
         "total_use_ratio": use_ratio,
     })
-    result_path=result_path[:result_path.rfind(".json")]+"_"+str(batch_size)+".json"
+    result_path=result_path[:result_path.rfind(".json")]+".json"
     json_save(result,result_path)
     return result
 
@@ -161,25 +158,21 @@ if __name__=="__main__":
         # solve problem B
         start_time=datetime.datetime.now()
         msgs=[]
-        for batch_size in range(40,30,-2):
-            msgs.extend([(
+        min_batch_size=[38,32,32,32,38]
+        best_batch_size=[40,36,40,40,38]
+        msgs.extend([(
             dataB_paths[i],
             os.path.join(P2_ans_dir,f"B{i+1}.csv"),
             os.path.join(pattern_figures_dir,f"B{i+1}"),
             os.path.join(P2_ans_dir,f"B{i+1}.json"),
-            L,W,batch_size) for i in range(5)])
-        # solve_B(msgs[0])
-        with ProcessPoolExecutor(25) as pool:
+            L,W,best_batch_size[i]) for i in range(5)])
+        
+        with ProcessPoolExecutor(5) as pool:
             results = pool.map(solve_B,msgs,chunksize=1)
         
-        test_result={}
-        for i,r in enumerate(results):
-            batch_size=msgs[i][-1]
-            if batch_size not in test_result.keys():
-                test_result[batch_size]=[]
-            test_result[batch_size].append(r)
-        
-        json_save(test_result,"test_B.json")
+        for i,result in enumerate(results):
+            print(f"The result of dataset B{i+1} is following: ")
+            print(result)
         
         end_time=datetime.datetime.now()
         time_cost=end_time-start_time
