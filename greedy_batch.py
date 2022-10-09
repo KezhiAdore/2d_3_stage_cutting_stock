@@ -16,8 +16,8 @@ def batch_generate(order_info, data_prefix, batch_count = 54, use_cache = True):
     order_material_list = order_info["order_material_list"]
     order_area_list = order_info["order_area_list"]
     order_num_list = order_info["order_num_list"]
-
-    order_material_variaty = [sum(order_material_list[i])  for i in range(len(order_material_list))]
+    order_material_list_binary = [1 if sum(order_material_list[i]) > 0 else 0 for i in range(len(order_material_list))]
+    order_material_variaty = [sum(order_material_list_binary[i])  for i in range(len(order_material_list))]
     #patterns是一个二维数组，第一维度是batch索引，第二维度是order索引
     order_material_list = np.array(order_material_list)
     # order_material_list = order_material_list / order_material_list.max(axis=1, keepdims=True)
@@ -47,7 +47,8 @@ def batch_generate(order_info, data_prefix, batch_count = 54, use_cache = True):
         divided = np.sum(list4)
 
         
-        return np.sum(list3)/divided
+        # return np.sum(list3)/divided
+        return np.min(list4)
 
     
     # 讲pattern初始化为varity最大的order，
