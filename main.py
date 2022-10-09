@@ -35,7 +35,7 @@ def solve_A(args):
     data_path,ans_path,figure_dir,result_path,L,W=args
     
     df=pd.read_csv(data_path)
-    pg=PatternGenerator(df,L,W)
+    pg=PatternGenerator(df,L,W,worker_num=64,chunksize=5)
     pg.generate_patterns()
     pg.export_patterns(ans_path)
     pg.export_pattern_figure(figure_dir)
@@ -130,8 +130,8 @@ def solve_B(args):
     return result
 
 if __name__=="__main__":
-    L=2440
-    W=1220
+    L=1220
+    W=2440
     
     if SOLVE_A:
         # solve problem A
