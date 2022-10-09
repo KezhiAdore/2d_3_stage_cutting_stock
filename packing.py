@@ -3,10 +3,10 @@ import pandas as pd
 from settings import cache_dir
 from utils import dill_load, dill_save
 
-def presolve_csv(path, data_prefix=None):
+def presolve_csv(path, data_prefix=None, use_cache=True):
     
     cache_path=os.path.join(cache_dir,f"{data_prefix}_order.pkl")
-    if not cache_path is None and os.path.exists(cache_path):
+    if not cache_path is None and os.path.exists(cache_path) and use_cache:
         return dill_load(cache_path)
     
     # 读取csv
