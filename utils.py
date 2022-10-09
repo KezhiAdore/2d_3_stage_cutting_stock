@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt
 from matplotlib import patches
 from matplotlib import lines
 import dill
+import json
 
 def gen_remnant(x,y,width,height):
     remnant=patches.Rectangle(
@@ -267,6 +268,20 @@ def dill_save(obj, path):
     with open(path, "wb") as f:
         dill.dump(obj, f)
         f.close()
+    
+
+def json_load(path):
+    with open(path,"r") as f:
+        data=json.load(f)
+        f.close()
+    return data
+
+
+def json_save(obj,path):
+    with open(path,"w") as f:
+        json.dump(obj,f,indent=4)
+        f.close()
+    
 
 
 if __name__ == "__main__":

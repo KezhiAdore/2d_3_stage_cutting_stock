@@ -22,9 +22,17 @@ for name, value in settings.__dict__.items():
 
 class PatternGenerator:
 
-    def __init__(self, df: pd.DataFrame, L, W, use_cache=False) -> None:
+    def __init__(self, df: pd.DataFrame, L, W, 
+                 use_cache=False,
+                 multi_process=True,
+                 worker_num=32, 
+                 chunksize=25
+                 ) -> None:
         self._origin_df = df
         self._use_cache = use_cache
+        self._multi_process = multi_process
+        self._worker_num = worker_num
+        self._chunksize = chunksize
         self._material = df["item_material"][0]
         self._item_shape = []   # shape of all items, including rotation
         self._item_require_num = {} # the requirement of each item, excluding rotation
@@ -47,6 +55,8 @@ class PatternGenerator:
         
         self._patterns=[]
         self._plate_number=0
+        
+        self._compose_df=None
 
     def init_item(self):
         self._item_shape = []
@@ -61,7 +71,13 @@ class PatternGenerator:
 
             self._item_shape.append((item_length, item_width))
             self._item_shape.append((item_width, item_length))
-
+            
+            # 旋转去重
+            if item_width in self._item_require_num.keys():
+                if item_length in self._item_require_num[item_width].keys():
+                    self._item_require_num[item_width][item_length]+=1
+                    continue
+            
             if item_length not in self._item_require_num.keys():
                 self._item_require_num[item_length] = {}
             if item_width not in self._item_require_num[item_length].keys():
@@ -69,7 +85,7 @@ class PatternGenerator:
             else:
                 self._item_require_num[item_length][item_width] += 1
 
-        # item去重
+        # item shape去重
         self._item_shape = list(set(self._item_shape))
         
         # init item require dataframe
@@ -166,13 +182,17 @@ class PatternGenerator:
     def generate_segments(self):
 
         segments = []
-        with ProcessPoolExecutor(32) as pool:
-            msgs = [ x for x in self._strips]
-            results = pool.map(self.generate_segment_x, msgs, chunksize=25)
+        if self._multi_process:
+            with ProcessPoolExecutor(self._worker_num) as pool:
+                msgs = [ x for x in self._strips]
+                results = pool.map(self.generate_segment_x, msgs, chunksize=self._chunksize)
 
-        for i, r in enumerate(results):
-            if not r.empty:
-                segments.append(r)
+            for i, r in enumerate(results):
+                if not r.empty:
+                    segments.append(r)
+        else:
+            for x in self._strips:
+                segments.append(self.generate_segment_x(x))
 
         return segments
 
@@ -371,6 +391,11 @@ class PatternGenerator:
         return self._patterns
     
     def export_patterns(self,filepath=None,start_plate_id=0):
+        if not self._compose_df is None:
+            if filepath:
+                self._compose_df.to_csv(filepath)
+            return self._compose_df
+        
         compose_df=pd.DataFrame()
         plate_id=start_plate_id
         for pattern in self._patterns:
@@ -394,6 +419,9 @@ class PatternGenerator:
                 list(compose_df.query("item_length==@item_width & item_width==@item_length & item_id.isnull()").index)
             )
             if item_index_list==[]:
+                self._origin_df.to_csv("bug.csv")
+                compose_df.to_csv("compose.csv")
+                self._item_require_df.to_csv("require.csv")
                 raise ValueError("item whose length is {} and width is {} is not covered".format(item_length,item_width))
             else:
                 item_index=item_index_list[0]
@@ -414,7 +442,8 @@ class PatternGenerator:
         if filepath:
             compose_df.to_csv(filepath)
         
-        return compose_df, plate_id
+        self._compose_df = compose_df
+        return compose_df
     
     def export_pattern_figure(self,dir_path):
         os.system("rm -rf {}".format(dir_path))

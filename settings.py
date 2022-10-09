@@ -12,11 +12,14 @@ dataB_paths = [
 ]
 
 results_dir = "results"
-segments_path = os.path.join(results_dir, "segments.pkl")
+cache_dir=os.path.join(results_dir,"cache")
+segments_path = os.path.join(cache_dir, "segments.pkl")
 
 figures_dir = os.path.join(results_dir, "figures")
 segment_figures_dir = os.path.join(figures_dir, "segments")
 pattern_figures_dir = os.path.join(figures_dir, "patterns")
+
+division_dir=os.path.join(results_dir,"division")
 
 P1_ans_dir = os.path.join(results_dir, "P1")
 P2_ans_dir = os.path.join(results_dir, "P2")
