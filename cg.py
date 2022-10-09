@@ -23,7 +23,7 @@ class MasterProblem:
 
         self.model.modelSense = GRB.MINIMIZE
         # Turning off output because of the iterative procedure
-        self.model.params.outputFlag = 1
+        self.model.params.outputFlag = 0
         self.model.update()
         print('finish master setup')
 
