@@ -71,8 +71,8 @@ def solve_B(args):
             msgs.append((batch_num,material,filepath,batch_figure_dir,L,W))
     
     # multiprocessing computing
-    with ProcessPoolExecutor(1) as pool:
-        results=pool.map(solve_batch,msgs)
+    with ProcessPoolExecutor(50) as pool:
+        results=pool.map(solve_batch,msgs,chunksize=24)
         
     # sort results
     pg_dict={}
@@ -158,7 +158,8 @@ if __name__=="__main__":
         # solve problem B
         start_time=datetime.datetime.now()
         msgs=[]
-        best_batch_size=[36,31,36,36,36]
+        min_batch_size=[36,31,31,31,37]
+        best_batch_size=[36,33,31,32,37]
         msgs.extend([(
             dataB_paths[i],
             os.path.join(P2_ans_dir,f"B{i+1}.csv"),
