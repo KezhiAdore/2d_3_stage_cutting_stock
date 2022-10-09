@@ -31,7 +31,7 @@ def presolve_csv(path, data_prefix=None):
             total_item_num += row['item_num']
             for j in range(len(item_material_type)):
                 if row['item_material'] == item_material_type[j]:
-                    total_metrial_num[j]=1# += row['item_num']
+                    total_metrial_num[j] += row['item_num']
                 
         order_area_list[order_index-1] = total_area
         order_num_list[order_index-1] = total_item_num

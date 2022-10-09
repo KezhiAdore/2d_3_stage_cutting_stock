@@ -16,7 +16,7 @@ def batch_generate(order_info, data_prefix, batch_count = 54, use_cache = True):
     order_material_list = order_info["order_material_list"]
     order_area_list = order_info["order_area_list"]
     order_num_list = order_info["order_num_list"]
-    order_material_list_binary = [1 if sum(order_material_list[i]) > 0 else 0 for i in range(len(order_material_list))]
+    order_material_list_binary = [[1 if order_material_list[j][i] > 0 else 0 for i in range(len(order_material_list[1]))] for j in range(len(order_material_list))]
     order_material_variaty = [sum(order_material_list_binary[i])  for i in range(len(order_material_list))]
     #patterns是一个二维数组，第一维度是batch索引，第二维度是order索引
     order_material_list = np.array(order_material_list)
@@ -44,11 +44,23 @@ def batch_generate(order_info, data_prefix, batch_count = 54, use_cache = True):
 
         list3 = np.minimum(list1, list2)
         list4 = np.maximum(list1, list2)
+        list5 = np.array(list1)+np.array(list2)
         divided = np.sum(list4)
-
+        nn = np.array(np.nonzero(list5))[0]
         
         # return np.sum(list3)/divided
-        return np.min(list4)
+        # print(min(nn))
+        # print(nn)
+        if len(nn) == 0:
+            return 0
+        return min(nn)
+        # filter(lambda x :x>0,list3)
+        # r = min(filter(lambda x :x>0,list3))
+        # if r:
+        #     return min(filter(lambda x :x>0,list3))
+        # else:
+        #     return 0
+        #return np.max(list3)#/np.sum(list3)
 
     
     # 讲pattern初始化为varity最大的order，
@@ -62,13 +74,18 @@ def batch_generate(order_info, data_prefix, batch_count = 54, use_cache = True):
 
         correlation_list = [[calc_list_correlation(init_material_list[j],df.iloc[jj]['material_list']) for jj in range(len(df))] for j in range(len(init_material_list))]
         # print(correlation_list)
+        index_max = 0
         max_correlation = np.array(correlation_list).max(axis=0)#[np.max(correlation_list[jj]) for jj in range(batch_count)] # 剩下一个维度是init过的batch
-        #index_max_corrlation = [np.argmax(correlation_list[j]) for j in range(len(init_material_list))]# 剩下一个维度是init过的batch
-        index_max = np.argmin(max_correlation)
+
+        while(index_max+1 in np.concatenate(batch['order_list'])):
+            #index_max_corrlation = [np.argmax(correlation_list[j]) for j in range(len(init_material_list))]# 剩下一个维度是init过的batch
+            index_max = np.argmin(max_correlation)
+            max_correlation[index_max] = 100
         # print(max_correlation)
         # min_correlation第一维度是init_material_list，第二维度是order
         # print(correlation_list)
         print(index_max)
+        
         batch.loc[i] = [i,[index_max+1], df.iloc[index_max]['area'], df.iloc[index_max]['num'], df.iloc[index_max]['material_list']]
         
         init_material_list.append(df.iloc[index_max]['material_list'])
