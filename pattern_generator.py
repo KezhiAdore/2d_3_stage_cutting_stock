@@ -438,7 +438,7 @@ class PatternGenerator:
             "item_width": "产品y方向长度",
         }
         compose_df=compose_df.rename(columns=column_map)
-        compose_df.dropna()
+        compose_df=compose_df.dropna()
         
         if filepath:
             compose_df.to_csv(filepath)
