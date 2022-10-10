@@ -25,7 +25,7 @@ class MasterProblem:
         # Turning off output because of the iterative procedure
         self.model.params.outputFlag = 0
         self.model.update()
-        # print('finish master setup')
+        print('finish master setup')
 
     def update(self, pattern, index):
         # j 通过aij变成i
@@ -34,7 +34,7 @@ class MasterProblem:
         self.vars[index] = self.model.addVar(obj=1, column=new_col,
                                              name=f"Pattern[{index}]")
         self.model.update()
-        # print('finish master update')
+        print('finish master update')
 
 
 class SubProblem:
@@ -70,7 +70,7 @@ class SubProblem:
         # the entering column.
         self.model.params.bestBdStop = 1
         self.model.update()
-        # print('finish sub setup')
+        print('finish sub setup')
 
     def uptate_forbidden(self, pattern):
         for i in range(len(pattern)):
@@ -82,7 +82,7 @@ class SubProblem:
         duals_new = self.dual_axis(duals)
         self.model.setAttr("obj", self.vars, duals_new)
         self.model.update()
-        # print('finish sub update')
+        print('finish sub update')
 
 
 class CuttingStock:
@@ -103,7 +103,7 @@ class CuttingStock:
         self.solution = {}
         self.master = MasterProblem()
         self.subproblem = SubProblem()
-        # print('finish init')
+        print('finish init')
 
     def _initialize_patterns(self):
         # Find trivial patterns that consider one final piece at a time,
@@ -116,7 +116,7 @@ class CuttingStock:
             pattern[i] = 1
             patterns.append(pattern)
         self.patterns = patterns
-        # print('finish init patterns')
+        print('finish init patterns')
 
     def _generate_patterns(self):
         self._initialize_patterns()
@@ -125,7 +125,7 @@ class CuttingStock:
             self.plate_length, self.lengths, self.duals, self.aij)
         while True:
             self.master.model.optimize()
-            # print('Obj: %g' % self.master.model.objVal)
+            print('Obj: %g' % self.master.model.objVal)
             self.duals = self.master.model.getAttr("pi", self.master.constrs)
             self.subproblem.update(self.duals)
 
@@ -141,7 +141,7 @@ class CuttingStock:
             self.master.update(pattern, len(self.patterns))
             self.patterns.append(pattern)
 
-            # print(f"Reduced cost: {reduced_cost:.2f}")
+            print(f"Reduced cost: {reduced_cost:.2f}")
 
     def solve(self):
         """
@@ -153,10 +153,11 @@ class CuttingStock:
         the local nodes of the search tree.
         """
         self._generate_patterns()
+        print("start master solve")
         self.master.model.setAttr("vType", self.master.vars, GRB.INTEGER)
         self.master.model.params.timeLimit = 300
         self.master.model.optimize()
-        # print('finish master solve')
+        print('finish master solve')
 
         for pattern, var in self.master.vars.items():
             if var.x > 0.5:

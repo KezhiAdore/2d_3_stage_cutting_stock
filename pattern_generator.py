@@ -177,6 +177,7 @@ class PatternGenerator:
         self._segments=list(set(self._segments))
         # reset data
         self.init_item()
+        print(f"generate segments successfully, total number of segments is {len(self._segments)}")
         return self._segments
 
     def generate_segments(self):
