@@ -4,7 +4,8 @@ import numpy as np
 from settings import pattern_figures_dir,figures_dir
 
 def remove_border(image):
-    image=image[730:2180,570:3370,:]
+    # image=image[730:2180,570:3370,:]  # 横版
+    image=image[400:2505,1420:2515:]    # 竖版
     return image
 
 def combine_images(image_list,row_limit,col_limit):
@@ -39,7 +40,8 @@ def dir_process(source_dir,dst_dir):
     image_name_list=os.listdir(source_dir)
     image_path_list=[os.path.join(source_dir,image_name) for image_name in image_name_list]
     image_list=[cv.imread(image_path) for image_path in image_path_list]
-    combined_images=combine_images(image_list,8,3)
+    # combined_images=combine_images(image_list,8,3)  # 横版
+    combined_images=combine_images(image_list,4,6)  # 竖版
     for index,image in enumerate(combined_images):
         image_path=os.path.join(dst_dir,f"{index}.png")
         cv.imwrite(image_path,image)
